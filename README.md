@@ -1,6 +1,6 @@
 # 🐍 Multi-Paradigm Snake Game
 
-This project demonstrates the implementation of the classic Snake Game in **three programming languages** — **Python**, **C**, and **Go** — each chosen to showcase different programming paradigms: Object-Oriented (OOP), Procedural, and Imperative styles.
+This project demonstrates the implementation of the classic Snake Game in **three programming languages** — [**Python**](https://github.com/Skrillzzzz/Multi-Paradigm-Snake-Game/blob/main/SnakeGame_Python/src/main.py), [**C**](https://github.com/Skrillzzzz/Multi-Paradigm-Snake-Game/blob/main/SnakeGame_C/src/snake.c), and [**Go**](https://github.com/Skrillzzzz/Multi-Paradigm-Snake-Game/blob/main/SnakeGame_Go/src/snake.go) — each chosen to showcase different programming paradigms: Object-Oriented (OOP), Procedural, and Imperative styles.
 
 ---
 
@@ -68,10 +68,10 @@ go run snake.go
 
 ## 📄 Documentation
 
-The `ParadigmDocs/` folder contains:
+The [`ParadigmDocs`](https://github.com/Skrillzzzz/Multi-Paradigm-Snake-Game/blob/main/ParadigmDocs/Comparison.docx) folder contains:
 - **Design documents** for each implementation
 - **Paradigm-specific analysis** explaining the code structure
-- A **Comparison.docx** that evaluates strengths, weaknesses, and language-specific advantages
+- A [**Comparison.docx**](https://github.com/Skrillzzzz/Multi-Paradigm-Snake-Game/blob/main/ParadigmDocs/Comparison.docx) that evaluates strengths, weaknesses, and language-specific advantages
 
 ---
 
