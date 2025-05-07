@@ -1,0 +1,3 @@
+This document delves into building a unique Snake game using three programming languages: Python, C, and Go, each exemplifying a different programming style. The aim is to highlight how the distinct features of each language can shape the game's development.
+
+The content is organised into sections that detail the design, coding, and testing phases for the game in each language. To aid clarity, the document includes screenshots, pseudocode, and code snippets. It also references Rosetta Code to contextualise these implementations within wider programming practices. The focus is on demonstrating the unique contributions each language makes to the game, showcasing their individual strengths in a concise manner.

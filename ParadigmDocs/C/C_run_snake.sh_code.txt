@@ -1,0 +1,3 @@
+#!/bin/bash
+clang snake.c -o snake -lncurses
+./snake

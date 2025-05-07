@@ -1,0 +1,279 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"math/rand"
+	"time"
+
+	"github.com/nsf/termbox-go"
+)
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	studentID := getStudentID()
+	score, err := playSnake()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Student ID: %s\n", studentID)
+	fmt.Println("Final score:", score)
+}
+
+type snake struct {
+	body          		[]position // tail to head positions of the snake
+	heading       		direction
+	width, height 		int
+	cells         		[]termbox.Cell
+	score int
+	lastSpeedIncrease 	time.Time
+	delay             	time.Duration // Add this field
+}
+
+type position struct {
+	X int
+	Y int
+}
+
+type direction int
+
+const (
+	North direction = iota
+	East
+	South
+	West
+)
+
+func (p position) next(d direction) position {
+	switch d {
+	case North:
+		p.Y--
+	case East:
+		p.X++
+	case South:
+		p.Y++
+	case West:
+		p.X--
+	}
+	return p
+}
+
+func playSnake() (int, error) {
+	err := termbox.Init()
+	if err != nil {
+		return 0, err
+	}
+	defer termbox.Close()
+
+	termbox.Clear(fg, bg)
+	termbox.HideCursor()
+	const initialDelay = 125 * time.Millisecond
+	s := &snake{
+		body:  make([]position, 0, 32),
+		cells: termbox.CellBuffer(),
+		lastSpeedIncrease: time.Now(),
+		delay: initialDelay,
+
+	}
+	s.width, s.height = termbox.Size()
+	s.drawBorder()
+	s.startSnake()
+	s.placeFood()
+	s.flush()
+
+	moveCh, errCh := s.startEventLoop()
+	for t := time.NewTimer(s.delay); ; t.Reset(s.delay) {
+		var move direction
+		select {
+		case err = <-errCh:
+			return len(s.body), err
+		case move = <-moveCh:
+			if !t.Stop() {
+				<-t.C
+			}
+		case <-t.C:
+			move = s.heading
+		}
+		if s.doMove(move) {
+			time.Sleep(1 * time.Second)
+			break
+		}
+
+		// Increase speed every 15 seconds
+        elapsed := time.Since(s.lastSpeedIncrease)
+        if elapsed >= 15 * time.Second {
+            // Increase speed
+            s.delay -= 10 * time.Millisecond
+            s.lastSpeedIncrease = time.Now()
+        }
+	}
+
+	return s.score, err
+}
+
+func (s *snake) startEventLoop() (<-chan direction, <-chan error) {
+	moveCh := make(chan direction)
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(errCh)
+		for {
+			ev := termbox.PollEvent()
+			switch ev.Type {
+			case termbox.EventKey:
+				switch ev.Key {
+				case termbox.KeyArrowUp:
+					if s.heading != South || len(s.body) == 1 {
+						moveCh <- North
+					}
+				case termbox.KeyArrowDown:
+					if s.heading != North || len(s.body) == 1 {
+						moveCh <- South
+					}
+				case termbox.KeyArrowLeft:
+					if s.heading != East || len(s.body) == 1 {
+						moveCh <- West
+					}
+				case termbox.KeyArrowRight:
+					if s.heading != West || len(s.body) == 1 {
+						moveCh <- East
+					}
+				case termbox.KeyEsc:
+					return
+				}
+			case termbox.EventError:
+				errCh <- ev.Err
+				return
+			}
+		}
+	}()
+	return moveCh, errCh
+}
+
+
+func (s *snake) flush() {
+	termbox.Flush()
+	s.cells = termbox.CellBuffer()
+}
+
+func (s *snake) getCellRune(p position) rune {
+	i := p.Y*s.width + p.X
+	return s.cells[i].Ch
+}
+
+func (s *snake) setCell(p position, c termbox.Cell) {
+	i := p.Y*s.width + p.X
+	s.cells[i] = c
+}
+
+func (s *snake) drawBorder() {
+	for x := 0; x < s.width; x++ {
+		s.setCell(position{x, 0}, border)
+		s.setCell(position{x, s.height - 1}, border)
+	}
+	for y := 0; y < s.height-1; y++ {
+		s.setCell(position{0, y}, border)
+		s.setCell(position{s.width - 1, y}, border)
+	}
+}
+
+func (s *snake) placeFood() {
+	for {
+		x := rand.Intn(s.width-2) + 1
+		y := rand.Intn(s.height-2) + 1
+		foodp := position{x, y}
+		if s.getCellRune(foodp) != ' ' {
+			continue
+		}
+		s.setCell(foodp, food)
+		return
+	}
+}
+
+func (s *snake) startSnake() {
+	x := rand.Intn(s.width/2) + s.width/4
+	y := rand.Intn(s.height/2) + s.height/4
+	head := position{x, y}
+	s.setCell(head, snakeHead)
+	s.body = append(s.body[:0], head)
+	s.heading = direction(rand.Intn(4))
+	s.score = 0			// score intialized to 0
+}
+
+func (s *snake) doMove(move direction) bool {
+	newHead := s.body[len(s.body)-1].next(move)
+
+	// Check if the new head position is out of bounds or matches any part of the snake's body
+	if newHead.X <= 0 || newHead.X >= s.width-1 || newHead.Y <= 0 || newHead.Y >= s.height-1 {
+		return true // Game over, snake hit the wall
+	}
+
+	for i := 0; i < len(s.body)-1; i++ {
+		if newHead == s.body[i] {
+			return true // Game over, snake ate itself
+		}
+	}
+
+	// Check if the snake ate food
+	r := s.getCellRune(newHead)
+	if r == food.Ch {
+		s.placeFood()
+		s.score++
+	} else {
+		// Remove the tail of the snake
+		tail := s.body[0]
+		s.body = s.body[1:]
+		s.setCell(tail, empty)
+	}
+
+	// Update the head
+	s.setCell(newHead, snakeHead)
+	s.body = append(s.body, newHead)
+	s.heading = move
+	s.flush()
+
+	return false
+}
+
+func getStudentID() string {
+	var studentID string
+	for {
+		fmt.Print("Welcome! Please enter your Student ID: ")
+		_, err := fmt.Scanln(&studentID)
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			continue
+		}
+		if len(studentID) != 8 || !isNumeric(studentID) {
+			fmt.Println("Error: Student ID must be exactly 8 digits. Try again.")
+			studentID = ""
+			continue
+		}
+		break
+	}
+	return studentID
+}
+
+func isNumeric(s string) bool {
+	for _, char := range s {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+
+
+const (
+	fg = termbox.ColorWhite
+	bg = termbox.ColorBlack
+)
+
+var (
+	empty     = termbox.Cell{Ch: ' ', Bg: bg, Fg: fg}
+	border    = termbox.Cell{Ch: '+', Bg: bg, Fg: termbox.ColorBlue}
+	snakeBody = termbox.Cell{Ch: '#', Bg: bg, Fg: termbox.ColorGreen}
+	snakeHead = termbox.Cell{Ch: 'O', Bg: bg, Fg: termbox.ColorYellow | termbox.AttrBold}
+	food      = termbox.Cell{Ch: '@', Bg: bg, Fg: termbox.ColorRed}
+)
